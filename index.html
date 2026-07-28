@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Công Cụ Vẽ Skin Theo Yêu Cầu</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #0d0d0d; color: #e0e0e0; overflow-x: hidden; }
+        
+        /* HEADER */
+        .header { background: #1a1a1a; padding: 12px 24px; display: flex; align-items: center; border-bottom: 2px solid #00cc77; position: sticky; top: 0; z-index: 100; }
+        .hamburger { font-size: 28px; cursor: pointer; color: #00cc77; padding: 4px 12px; user-select: none; transition: 0.2s; }
+        .hamburger:hover { color: #00ff99; }
+        .header-title { font-size: 22px; font-weight: bold; color: #00cc77; margin-left: 16px; letter-spacing: 1px; }
+        .header-title span { color: #fff; font-weight: normal; font-size: 14px; margin-left: 12px; }
+
+        /* SIDEBAR */
+        .sidebar { position: fixed; top: 0; left: -340px; width: 300px; height: 100%; background: #1a1a1a; border-right: 2px solid #00cc77; padding: 70px 20px 20px; transition: 0.3s; z-index: 200; overflow-y: auto; }
+        .sidebar.open { left: 0; }
+        .sidebar-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 150; display: none; }
+        .sidebar-overlay.open { display: block; }
+        .sidebar h3 { color: #00cc77; margin: 18px 0 10px; font-size: 16px; border-bottom: 1px solid #333; padding-bottom: 6px; }
+        .sidebar a { display: block; color: #ccc; padding: 10px 14px; text-decoration: none; border-radius: 4px; margin: 2px 0; font-size: 15px; transition: 0.2s; cursor: pointer; }
+        .sidebar a:hover { background: #00cc77; color: #000; }
+        .sidebar .close-btn { position: absolute; top: 16px; right: 20px; font-size: 30px; cursor: pointer; color: #cc4444; }
+        .sidebar .close-btn:hover { color: #ff6666; }
+
+        /* MAIN */
+        .main { display: flex; flex-direction: row; gap: 20px; padding: 20px; max-width: 100%; width: 100%; min-height: calc(100vh - 80px); }
+        
+        /* LEFT */
+        .panel-left { flex: 1.2; min-width: 280px; background: #161616; border: 1px solid #2a2a2a; border-radius: 10px; padding: 20px; }
+        .panel-left h2 { color: #00cc77; font-size: 18px; margin-bottom: 14px; border-bottom: 1px solid #2a2a2a; padding-bottom: 8px; }
+        .panel-left textarea { width: 100%; height: 80px; background: #0d0d0d; color: #e0e0e0; border: 1px solid #333; padding: 10px; font-size: 14px; border-radius: 6px; resize: vertical; font-family: inherit; }
+        .panel-left textarea:focus { border-color: #00cc77; outline: none; }
+        
+        .control-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 14px 0; }
+        .control-group label { display: block; font-size: 12px; color: #888; margin-bottom: 3px; }
+        .control-group input[type="color"] { width: 100%; height: 40px; border: none; background: transparent; cursor: pointer; padding: 0; }
+        .control-group select { width: 100%; padding: 8px; background: #0d0d0d; color: #e0e0e0; border: 1px solid #333; border-radius: 4px; font-family: inherit; }
+        .control-group select:focus { border-color: #00cc77; outline: none; }
+
+        .btn-row { display: flex; flex-wrap: wrap; gap: 10px; margin: 12px 0; }
+        .btn { background: #00cc77; color: #000; border: none; padding: 10px 22px; font-weight: bold; border-radius: 6px; cursor: pointer; font-size: 14px; transition: 0.2s; font-family: inherit; }
+        .btn:hover { background: #00ff99; transform: scale(1.02); }
+        .btn-danger { background: #cc4444; color: #fff; }
+        .btn-danger:hover { background: #ff5555; }
+        .btn-secondary { background: #333; color: #e0e0e0; }
+        .btn-secondary:hover { background: #555; }
+        .btn-upload { background: #8866cc; color: #fff; }
+        .btn-upload:hover { background: #aa88ee; }
+
+        /* CENTER */
+        .panel-center { flex: 2; min-width: 400px; background: #161616; border: 1px solid #2a2a2a; border-radius: 10px; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .panel-center h2 { color: #00cc77; font-size: 18px; margin-bottom: 14px; border-bottom: 1px solid #2a2a2a; padding-bottom: 8px; width: 100%; text-align: center; }
+        .canvas-wrapper { position: relative; width: 100%; max-width: 600px; aspect-ratio: 1/1; border: 2px solid #2a2a2a; border-radius: 8px; background: #222; overflow: hidden; }
+        .canvas-wrapper canvas { width: 100%; height: 100%; display: block; image-rendering: pixelated; }
+        .canvas-actions { display: flex; gap: 12px; margin-top: 14px; flex-wrap: wrap; justify-content: center; }
+
+        /* RIGHT */
+        .panel-right { flex: 1; min-width: 240px; background: #161616; border: 1px solid #2a2a2a; border-radius: 10px; padding: 20px; }
+        .panel-right h2 { color: #00cc77; font-size: 18px; margin-bottom: 14px; border-bottom: 1px solid #2a2a2a; padding-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+        .history-list { max-height: 450px; overflow-y: auto; }
+        .history-item { background: #1a1a1a; padding: 8px 12px; margin: 4px 0; border-left: 3px solid #00cc77; border-radius: 4px; cursor: pointer; font-size: 13px; display: flex; justify-content: space-between; align-items: center; transition: 0.2s; }
+        .history-item:hover { background: #252525; }
+        .history-item .req-text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 8px; }
+        .history-item .timestamp { color: #666; font-size: 11px; white-space: nowrap; margin-right: 6px; }
+        .history-item .restore-btn { background: #00cc77; color: #000; border: none; padding: 2px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; }
+        .history-item .restore-btn:hover { background: #00ff99; }
+        .empty-history { color: #555; text-align: center; padding: 30px 0; font-style: italic; }
+
+        /* UPLOAD SECTION */
+        .upload-section { margin-top: 14px; padding-top: 14px; border-top: 1px solid #2a2a2a; }
+        .upload-section h3 { color: #8866cc; font-size: 15px; margin-bottom: 8px; }
+        .upload-area { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+        .upload-area input[type="file"] { display: none; }
+        .upload-area .file-label { background: #2a2a2a; padding: 8px 16px; border-radius: 4px; cursor: pointer; border: 1px dashed #8866cc; color: #ccc; font-size: 13px; transition: 0.2s; }
+        .upload-area .file-label:hover { background: #333; border-color: #aa88ee; }
+        .upload-preview { max-width: 80px; max-height: 80px; border-radius: 4px; border: 1px solid #444; display: none; }
+
+        /* RESPONSIVE */
+        @media (max-width: 1024px) { .main { flex-direction: column; } .panel-center canvas { max-width: 100%; } .panel-right { min-width: unset; } }
+        @media (max-width: 600px) { .control-grid { grid-template-columns: 1fr; } .header-title { font-size: 16px; } .header-title span { display: none; } }
+    </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+    <div class="hamburger" id="hamburgerBtn">☰</div>
+    <div class="header-title">CÔNG CỤ VẼ SKIN <span>— theo yêu cầu, chỉnh sửa, lịch sử, upload ảnh</span></div>
+</div>
+
+<!-- SIDEBAR -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+<div class="sidebar" id="sidebar">
+    <div class="close-btn" id="sidebarClose">✕</div>
+    <h3>📋 MENU CHÍNH</h3>
+    <a onclick="scrollToPanel('panel-left')">📝 YÊU CẦU</a>
+    <a onclick="scrollToPanel('panel-center')">🎨 BẢN VẼ</a>
+    <a onclick="scrollToPanel('panel-right')">📜 LỊCH SỬ</a>
+    <h3>🖼 UPLOAD</h3>
+    <a onclick="document.getElementById('fileInput').click();">📤 TẢI ẢNH LÊN</a>
+    <a onclick="clearUploadedImage()">🗑 XÓA ẢNH ĐÃ TẢI</a>
+    <h3>⚙️ TÙY CHỌN</h3>
+    <a onclick="resetAll()">🔄 ĐẶT LẠI MẶC ĐỊNH</a>
+    <a onclick="exportAllHistory()">💾 XUẤT LỊCH SỬ (JSON)</a>
+    <a onclick="importHistory()">📂 NHẬP LỊCH SỬ</a>
+    <h3>ℹ️ THÔNG TIN</h3>
+    <a style="color:#666; font-size:13px; cursor:default;">Phiên bản 3.0 | Full HD</a>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+    <!-- LEFT: REQUEST -->
+    <div class="panel-left" id="panel-left">
+        <h2>📝 YÊU CẦU VẼ SKIN</h2>
+        <textarea id="requestInput" placeholder="Nhập mô tả skin... (ví dụ: gradient đỏ-xanh, sọc, chi tiết cao)">gradient đỏ-xanh với sọc và chi tiết cao</textarea>
+        
+        <div class="control-grid">
+            <div class="control-group">
+                <label>🎨 MÀU CHÍNH</label>
+                <input type="color" id="colorPrimary" value="#ff2200">
+            </div>
+            <div class="control-group">
+                <label>🎨 MÀU PHỤ</label>
+                <input type="color" id="colorSecondary" value="#0044ff">
+            </div>
+            <div class="control-group">
+                <label>🔲 HOA VĂN</label>
+                <select id="patternSelect">
+                    <option value="solid">Đồng nhất</option>
+                    <option value="gradient" selected>Chuyển màu</option>
+                    <option value="stripes">Sọc</option>
+                    <option value="checker">Bàn cờ</option>
+                    <option value="camouflage">Ngụy trang</option>
+                    <option value="marble">Đá cẩm thạch</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>🔍 CHI TIẾT</label>
+                <select id="detailSelect">
+                    <option value="1">Thấp</option>
+                    <option value="2" selected>Trung bình</option>
+                    <option value="3">Cao</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="btn-row">
+            <button class="btn" id="generateBtn">▶ TẠO SKIN</button>
+            <button class="btn btn-secondary" id="clearCanvasBtn">✕ XÓA VẼ</button>
+        </div>
+
+        <!-- UPLOAD SECTION -->
+        <div class="upload-section">
+            <h3>🖼 TẢI ẢNH LÊN (lớp phủ)</h3>
+            <div class="upload-area">
+                <input type="file" id="fileInput" accept="image/*">
+                <label class="file-label" for="fileInput">📂 CHỌN ẢNH</label>
+                <button class="btn btn-secondary" onclick="clearUploadedImage()" style="padding:6px 14px; font-size:12px;">✕ XÓA</button>
+                <img id="uploadPreview" class="upload-preview" alt="Preview">
+            </div>
+            <div style="margin-top:6px; font-size:12px; color:#666;">Ảnh sẽ được vẽ chồng lên skin (hỗ trợ PNG, JPG, WEBP)</div>
+        </div>
+    </div>
+
+    <!-- CENTER: CANVAS -->
+    <div class="panel-center" id="panel-center">
+        <h2>🎨 BẢN VẼ SKIN</h2>
+        <div class="canvas-wrapper">
+            <canvas id="skinCanvas" width="512" height="512"></canvas>
+        </div>
+        <div class="canvas-actions">
+            <button class="btn" id="downloadBtn">⬇ TẢI PNG</button>
+            <button class="btn btn-secondary" id="zoomInBtn">🔍 +</button>
+            <button class="btn btn-secondary" id="zoomOutBtn">🔍 −</button>
+            <button class="btn btn-secondary" id="resetZoomBtn">⟲ 100%</button>
+        </div>
+    </div>
+
+    <!-- RIGHT: HISTORY -->
+    <div class="panel-right" id="panel-right">
+        <h2>📜 LỊCH SỬ <span style="font-size:13px; color:#888;" id="historyCount">(0)</span></h2>
+        <div class="history-list" id="historyList">
+            <div class="empty-history">Chưa có mục nào</div>
+        </div>
+        <div class="btn-row" style="margin-top:12px;">
+            <button class="btn btn-danger" id="clearHistoryBtn">🗑 XÓA TẤT CẢ</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ============================================================
+// SKIN GENERATOR ENGINE - FIXED DRAW, NO BUG
+// ============================================================
+const canvas = document.getElementById('skinCanvas');
+const ctx = canvas.getContext('2d');
+const W = 512, H = 512;
+
+let uploadedImageData = null; // ImageData của ảnh đã tải
+let uploadedImageWidth = 0, uploadedImageHeight = 0;
+
+function hexToRgb(hex) {
+    const r = parseInt(hex.slice(1,3), 16);
+    const g = parseInt(hex.slice(3,5), 16);
+    const b = parseInt(hex.slice(5,7), 16);
+    return { r, g, b };
+}
+function clamp(v) { return Math.min(255, Math.max(0, Math.round(v))); }
+
+function generateSkin(params) {
+    const primary = params.primary || '#ff2200';
+    const secondary = params.secondary || '#0044ff';
+    const pattern = params.pattern || 'gradient';
+    const detail = parseInt(params.detail) || 2;
+
+    const pRgb = hexToRgb(primary);
+    const sRgb = hexToRgb(secondary);
+    const imgData = ctx.createImageData(W, H);
+    const data = imgData.data;
+
+    // === BASE FILL ===
+    for (let i = 0; i < data.length; i += 4) {
+        data[i] = pRgb.r;
+        data[i+1] = pRgb.g;
+        data[i+2] = pRgb.b;
+        data[i+3] = 255;
+    }
+
+    // === PATTERN ===
+    switch(pattern) {
+        case 'solid': break;
+        case 'gradient':
+            for (let y = 0; y < H; y++) {
+                const ratio = y / H;
+                const r = clamp(pRgb.r * (1 - ratio) + sRgb.r * ratio);
+                const g = clamp(pRgb.g * (1 - ratio) + sRgb.g * ratio);
+                const b = clamp(pRgb.b * (1 - ratio) + sRgb.b * ratio);
+                for (let x = 0; x < W; x++) {
+                    const idx = (y * W + x) * 4;
+                    data[idx] = r; data[idx+1] = g; data[idx+2] = b;
+                }
+            }
+            break;
+        case 'stripes': {
+            const sw = 20;
+            for (let y = 0; y < H; y++) {
+                if (Math.floor(y / sw) % 2 === 0) {
+                    for (let x = 0; x < W; x++) {
+                        const idx = (y * W + x) * 4;
+                        data[idx] = sRgb.r; data[idx+1] = sRgb.g; data[idx+2] = sRgb.b;
+                    }
+                }
+            }
+            break;
+        }
+        case 'checker': {
+            const sz = 40;
+            for (let y = 0; y < H; y++) {
+                for (let x = 0; x < W; x++) {
+                    if ((Math.floor(x/sz) + Math.floor(y/sz)) % 2 === 0) {
+                        const idx = (y * W + x) * 4;
+                        data[idx] = sRgb.r; data[idx+1] = sRgb.g; data[idx+2] = sRgb.b;
+                    }
+                }
+            }
+            break;
+        }
+        case 'camouflage': {
+            for (let i = 0; i < 80; i++) {
+                const cx = Math.floor(Math.random() * W);
+                const cy = Math.floor(Math.random() * H);
+                const rad = 10 + Math.floor(Math.random() * 35);
+                const cr = 50 + Math.floor(Math.random() * 200);
+                const cg = 50 + Math.floor(Math.random() * 200);
+                const cb = 50 + Math.floor(Math.random() * 200);
+                for (let y = Math.max(0, cy-rad); y < Math.min(H, cy+rad); y++) {
+                    for (let x = Math.max(0, cx-rad); x < Math.min(W, cx+rad); x++) {
+                        const dx = x - cx, dy = y - cy;
+                        if (dx*dx + dy*dy <= rad*rad) {
+                            const idx = (y * W + x) * 4;
+                            data[idx] = cr; data[idx+1] = cg; data[idx+2] = cb;
+                        }
+                    }
+                }
+            }
+            break;
+        }
+        case 'marble': {
+            for (let y = 0; y < H; y++) {
+                for (let x = 0; x < W; x++) {
+                    const val = 128 + 127 * Math.sin(x/30 + y/20 + Math.random() * 0.3);
+                    const mix = val / 255;
+                    const idx = (y * W + x) * 4;
+                    data[idx] = clamp(pRgb.r * (1 - mix) + sRgb.r * mix);
+                    data[idx+1] = clamp(pRgb.g * (1 - mix) + sRgb.g * mix);
+                    data[idx+2] = clamp(pRgb.b * (1 - mix) + sRgb.b * mix);
+                }
+            }
+            break;
+        }
+        default: break;
+    }
+
+    // === DETAILS (grid + highlights) ===
+    if (detail >= 2) {
+        for (let i = 0; i <= W; i += 64) {
+            for (let y = 0; y < H; y++) {
+                if (i < W) { const idx = (y * W + i) * 4; data[idx]=0; data[idx+1]=0; data[idx+2]=0; }
+                if (i < H) { const idx = (i * W + y) * 4; data[idx]=0; data[idx+1]=0; data[idx+2]=0; }
+            }
+        }
+    }
+    if (detail >= 3) {
+        for (let i = 0; i < 8; i++) {
+            const cx = 40 + i * 60, cy = 40 + i * 60, rad = 15;
+            for (let y = Math.max(0, cy-rad); y < Math.min(H, cy+rad); y++) {
+                for (let x = Math.max(0, cx-rad); x < Math.min(W, cx+rad); x++) {
+                    const dx = x - cx, dy = y - cy;
+                    if (Math.abs(dx*dx + dy*dy - rad*rad) < 20) {
+                        const idx = (y * W + x) * 4;
+                        data[idx]=255; data[idx+1]=255; data[idx+2]=255;
+                    }
+                }
+            }
+        }
+    }
+
+    // === PUT BASE IMAGE ===
+    ctx.putImageData(imgData, 0, 0);
+
+    // === OVERLAY UPLOADED IMAGE (nếu có) ===
+    if (uploadedImageData) {
+        // Vẽ ảnh đã tải lên với độ trong suốt 70% (alpha blend)
+        const overlayData = uploadedImageData;
+        const ow = uploadedImageWidth;
+        const oh = uploadedImageHeight;
+        // Scale để vừa canvas, giữ tỷ lệ
+        const scale = Math.min(W / ow, H / oh);
+        const dw = Math.round(ow * scale);
+        const dh = Math.round(oh * scale);
+        const dx = Math.round((W - dw) / 2);
+        const dy = Math.round((H - dh) / 2);
+
+        // Lấy dữ liệu canvas hiện tại
+        const currentData = ctx.getImageData(0, 0, W, H);
+        const cData = currentData.data;
+
+        // Lấy dữ liệu ảnh gốc
+        const oData = overlayData.data;
+
+        // Blend với alpha = 0.7
+        for (let y = 0; y < dh; y++) {
+            for (let x = 0; x < dw; x++) {
+                const sx = Math.floor(x / scale);
+                const sy = Math.floor(y / scale);
+                if (sx >= ow || sy >= oh) continue;
+                const oIdx = (sy * ow + sx) * 4;
+                const alpha = oData[oIdx + 3] / 255 * 0.7; // độ trong suốt của ảnh * 0.7
+                if (alpha > 0.01) {
+                    const cIdx = ((dy + y) * W + (dx + x)) * 4;
+                    cData[cIdx] = clamp(cData[cIdx] * (1 - alpha) + oData[oIdx] * alpha);
+                    cData[cIdx+1] = clamp(cData[cIdx+1] * (1 - alpha) + oData[oIdx+1] * alpha);
+                    cData[cIdx+2] = clamp(cData[cIdx+2] * (1 - alpha) + oData[oIdx+2] * alpha);
+                    // Giữ alpha = 255
+                }
+            }
+        }
+        ctx.putImageData(currentData, 0, 0);
+    }
+}
+
+// ============================================================
+// HISTORY
+// ============================================================
+let history = JSON.parse(localStorage.getItem('skinHistory') || '[]');
+
+function renderHistory() {
+    const list = document.getElementById('historyList');
+    const count = document.getElementById('historyCount');
+    count.textContent = `(${history.length})`;
+    if (history.length === 0) {
+        list.innerHTML = '<div class="empty-history">Chưa có mục nào</div>';
+        return;
+    }
+    list.innerHTML = history.map((item, idx) => `
+        <div class="history-item" data-index="${idx}">
+            <span class="req-text" title="${item.request}">${item.request.substring(0, 45)}${item.request.length > 45 ? '…' : ''}</span>
+            <span class="timestamp">${item.timestamp}</span>
+            <button class="restore-btn" data-restore="${idx}">↺</button>
+        </div>
+    `).join('');
+
+    list.querySelectorAll('[data-restore]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const idx = parseInt(btn.dataset.restore);
+            const item = history[idx];
+            if (item) {
+                document.getElementById('requestInput').value = item.request;
+                document.getElementById('colorPrimary').value = item.primary;
+                document.getElementById('colorSecondary').value = item.secondary;
+                document.getElementById('patternSelect').value = item.pattern;
+                document.getElementById('detailSelect').value = item.detail;
+                generateFromUI();
+            }
+        });
+    });
+}
+
+function addHistory(request, primary, secondary, pattern, detail) {
+    const entry = {
+        request,
+        primary,
+        secondary,
+        pattern,
+        detail,
+        timestamp: new Date().toLocaleString('vi-VN')
+    };
+    history.unshift(entry);
+    if (history.length > 100) history = history.slice(0, 100);
+    localStorage.setItem('skinHistory', JSON.stringify(history));
+    renderHistory();
+}
+
+function generateFromUI() {
+    const request = document.getElementById('requestInput').value || 'Skin không tên';
+    const primary = document.getElementById('colorPrimary').value;
+    const secondary = document.getElementById('colorSecondary').value;
+    const pattern = document.getElementById('patternSelect').value;
+    const detail = document.getElementById('detailSelect').value;
+    generateSkin({ primary, secondary, pattern, detail });
+    addHistory(request, primary, secondary, pattern, detail);
+}
+
+// ============================================================
+// UPLOAD IMAGE
+// ============================================================
+document.getElementById('fileInput').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+        const img = new Image();
+        img.onload = function() {
+            // Tạo canvas tạm để lấy ImageData
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = img.width;
+            tempCanvas.height = img.height;
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.drawImage(img, 0, 0);
+            uploadedImageData = tempCtx.getImageData(0, 0, img.width, img.height);
+            uploadedImageWidth = img.width;
+            uploadedImageHeight = img.height;
+            
+            // Hiển thị preview
+            const preview = document.getElementById('uploadPreview');
+            preview.src = ev.target.result;
+            preview.style.display = 'block';
+            
+            // Tự động vẽ lại skin với lớp phủ
+            generateFromUI();
+        };
+        img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+});
+
+function clearUploadedImage() {
+    uploadedImageData = null;
+    uploadedImageWidth = 0;
+    uploadedImageHeight = 0;
+    document.getElementById('fileInput').value = '';
+    document.getElementById('uploadPreview').style.display = 'none';
+    document.getElementById('uploadPreview').src = '';
+    generateFromUI();
+}
+
+// ============================================================
+// SIDEBAR
+// ============================================================
+function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.getElementById('sidebarOverlay').classList.toggle('open');
+}
+document.getElementById('hamburgerBtn').addEventListener('click', toggleSidebar);
+document.getElementById('sidebarClose').addEventListener('click', toggleSidebar);
+document.getElementById('sidebarOverlay').addEventListener('click', toggleSidebar);
+
+function scrollToPanel(id) {
+    toggleSidebar();
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function resetAll() {
+    if (confirm('Đặt lại tất cả về mặc định?')) {
+        document.getElementById('requestInput').value = 'gradient đỏ-xanh với sọc và chi tiết cao';
+        document.getElementById('colorPrimary').value = '#ff2200';
+        document.getElementById('colorSecondary').value = '#0044ff';
+        document.getElementById('patternSelect').value = 'gradient';
+        document.getElementById('detailSelect').value = '2';
+        clearUploadedImage();
+        generateFromUI();
+        toggleSidebar();
+    }
+}
+
+function exportAllHistory() {
+    if (history.length === 0) { alert('Không có lịch sử để xuất.'); return; }
+    const blob = new Blob([JSON.stringify(history, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `skin_history_${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toggleSidebar();
+}
+
+function importHistory() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            try {
+                const data = JSON.parse(ev.target.result);
+                if (Array.isArray(data)) {
+                    history = data;
+                    localStorage.setItem('skinHistory', JSON.stringify(history));
+                    renderHistory();
+                    alert(`Đã nhập ${history.length} mục.`);
+                } else { alert('File JSON không hợp lệ.'); }
+            } catch(err) { alert('Lỗi đọc file: ' + err.message); }
+        };
+        reader.readAsText(file);
+        toggleSidebar();
+    };
+    input.click();
+}
+
+// ============================================================
+// EVENTS
+// ============================================================
+document.getElementById('generateBtn').addEventListener('click', generateFromUI);
+
+document.getElementById('clearCanvasBtn').addEventListener('click', () => {
+    ctx.fillStyle = '#222';
+    ctx.fillRect(0, 0, W, H);
+});
+
+document.getElementById('clearHistoryBtn').addEventListener('click', () => {
+    if (confirm('Xóa toàn bộ lịch sử?')) {
+        history = [];
+        localStorage.removeItem('skinHistory');
+        renderHistory();
+    }
+});
+
+document.getElementById('downloadBtn').addEventListener('click', () => {
+    // Lấy dữ liệu canvas hiện tại (bao gồm cả lớp phủ)
+    const link = document.createElement('a');
+    link.download = `skin_${Date.now()}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+});
+
+// Zoom
+let zoomLevel = 1;
+const wrapper = document.querySelector('.canvas-wrapper');
+document.getElementById('zoomInBtn').addEventListener('click', () => {
+    zoomLevel = Math.min(3, zoomLevel + 0.2);
+    canvas.style.transform = `scale(${zoomLevel})`;
+    canvas.style.transformOrigin = 'center center';
+});
+document.getElementById('zoomOutBtn').addEventListener('click', () => {
+    zoomLevel = Math.max(0.5, zoomLevel - 0.2);
+    canvas.style.transform = `scale(${zoomLevel})`;
+    canvas.style.transformOrigin = 'center center';
+});
+document.getElementById('resetZoomBtn').addEventListener('click', () => {
+    zoomLevel = 1;
+    canvas.style.transform = 'scale(1)';
+});
+
+// Enter key
+document.getElementById('requestInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        generateFromUI();
+    }
+});
+
+// ============================================================
+// INIT
+// ============================================================
+window.addEventListener('load', () => {
+    renderHistory();
+    generateFromUI();
+});
+</script>
+</body>
+</html>
